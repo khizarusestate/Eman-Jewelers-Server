@@ -3,8 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "nodemon server.js", "start": "node server.js" },
-  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "admin:create": "node scripts/createAdmin.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
@@ -16,5 +22,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.5"
   },
-  "devDependencies": { "nodemon": "^3.1.9" }
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
 }
