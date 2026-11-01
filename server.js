@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import { authLimiter } from "./middleware/rateLimit.js";
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
+import storeRoutes from "./routes/store.js";
 
 const app = express();
 const origins = [process.env.CLIENT_ORIGIN, process.env.ADMIN_ORIGIN].filter(Boolean);
@@ -16,10 +17,11 @@ app.use(cors({ origin(origin, callback) {
   if (!origin || origins.includes(origin)) return callback(null, true);
   return callback(new Error("Origin is not allowed by CORS."));
 }, credentials: true }));
-app.use(express.json({ limit: "20kb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 app.get("/api/health", (_req, res) => res.json({ success: true, service: "Eman Jewelers API" }));
 app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/store", storeRoutes);
 app.use("/api/admin", authLimiter, adminRoutes);
 app.use((req, res) => res.status(404).json({ success: false, message: "The requested endpoint was not found." }));
 app.use((err, _req, res, _next) => {
