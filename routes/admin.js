@@ -2,6 +2,8 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Product from "../models/Product.js";
+import Order from "../models/Order.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 const router = Router();
 const cookieName = () => process.env.COOKIE_NAME || "eman_session";
@@ -41,5 +43,43 @@ router.patch("/customers/:id", async (req,res,next) => {
   }catch(error){next(error);}
 });
 router.delete("/customers/:id", async (req,res,next) => { try { const result=await User.deleteOne({_id:req.params.id,role:"customer"}); if(!result.deletedCount)return res.status(404).json({success:false,message:"Customer not found."}); res.json({success:true,message:"Customer account deleted."}); }catch(error){next(error);} });
-router.get("/stats", async (_req,res,next) => { try { const [customers,recent]=await Promise.all([User.countDocuments({role:"customer"}),User.countDocuments({role:"customer",createdAt:{$gte:new Date(Date.now()-30*86400000)}})]); res.json({success:true,stats:{customers,newCustomersLast30Days:recent}}); }catch(error){next(error);} });
+
+router.get("/products", async (_req,res,next) => { try { const products=await Product.find().sort({createdAt:-1}).lean(); res.json({success:true,products:products.map(p=>({...p,id:p._id.toString()}))}); } catch(error){next(error);} });
+router.post("/products", async (req,res,next) => {
+  try {
+    const {name,category,price,image,tag="",description="",material="",care=""}=req.body||{};
+    if(!String(name||"").trim()||!String(category||"").trim()||!Number.isFinite(Number(price))||Number(price)<0||!String(image||"").trim())return res.status(400).json({success:false,message:"Name, category, valid price and image URL are required."});
+    const product=await Product.create({name,category,price:Number(price),image,tag,description,material,care});
+    res.status(201).json({success:true,product:{...product.toObject(),id:product._id.toString()}});
+  }catch(error){next(error);}
+});
+router.patch("/products/:id", async (req,res,next) => {
+  try {
+    const allowed=["name","category","price","image","tag","description","material","care","active"],updates={};
+    for(const key of allowed)if(req.body[key]!==undefined)updates[key]=req.body[key];
+    if(updates.price!==undefined&&(!Number.isFinite(Number(updates.price))||Number(updates.price)<0))return res.status(400).json({success:false,message:"Enter a valid product price."});
+    const product=await Product.findByIdAndUpdate(req.params.id,{$set:updates},{new:true,runValidators:true});
+    if(!product)return res.status(404).json({success:false,message:"Product not found."});
+    res.json({success:true,product:{...product.toObject(),id:product._id.toString()}});
+  }catch(error){next(error);}
+});
+router.delete("/products/:id", async (req,res,next) => { try { const product=await Product.findByIdAndUpdate(req.params.id,{$set:{active:false}},{new:true}); if(!product)return res.status(404).json({success:false,message:"Product not found."}); res.json({success:true,message:"Product archived."}); }catch(error){next(error);} });
+router.get("/orders", async (req,res,next) => {
+  try {
+    const page=Math.max(1,Number.parseInt(req.query.page,10)||1),limit=Math.min(100,Math.max(1,Number.parseInt(req.query.limit,10)||50));
+    const filter=req.query.status&&req.query.status!=="All"?{status:String(req.query.status)}:{};
+    const [orders,total]=await Promise.all([Order.find(filter).sort({createdAt:-1}).skip((page-1)*limit).limit(limit).lean(),Order.countDocuments(filter)]);
+    res.json({success:true,orders,pagination:{page,limit,total,pages:Math.ceil(total/limit)}});
+  }catch(error){next(error);}
+});
+router.patch("/orders/:id/status", async (req,res,next) => {
+  try {
+    const allowed=["Pending","Confirmed","Processing","Shipped","Delivered","Cancelled"];
+    if(!allowed.includes(req.body.status))return res.status(400).json({success:false,message:"Invalid order status."});
+    const order=await Order.findByIdAndUpdate(req.params.id,{$set:{status:req.body.status}},{new:true});
+    if(!order)return res.status(404).json({success:false,message:"Order not found."});
+    res.json({success:true,order});
+  }catch(error){next(error);}
+});
+\nrouter.get("/stats", async (_req,res,next) => { try { const [customers,recent]=await Promise.all([User.countDocuments({role:"customer"}),User.countDocuments({role:"customer",createdAt:{$gte:new Date(Date.now()-30*86400000)}})]); res.json({success:true,stats:{customers,newCustomersLast30Days:recent}}); }catch(error){next(error);} });
 export default router;
