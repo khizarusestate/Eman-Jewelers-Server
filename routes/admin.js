@@ -81,5 +81,5 @@ router.patch("/orders/:id/status", async (req,res,next) => {
     res.json({success:true,order});
   }catch(error){next(error);}
 });
-\nrouter.get("/stats", async (_req,res,next) => { try { const [customers,recent]=await Promise.all([User.countDocuments({role:"customer"}),User.countDocuments({role:"customer",createdAt:{$gte:new Date(Date.now()-30*86400000)}})]); res.json({success:true,stats:{customers,newCustomersLast30Days:recent}}); }catch(error){next(error);} });
+router.get("/stats", async (_req,res,next) => { try { const [customers,recent]=await Promise.all([User.countDocuments({role:"customer"}),User.countDocuments({role:"customer",createdAt:{$gte:new Date(Date.now()-30*86400000)}})]); res.json({success:true,stats:{customers,newCustomersLast30Days:recent}}); }catch(error){next(error);} });
 export default router;
